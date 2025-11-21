@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Мини‑соцсеть — расширённая версия</title>
+  <style>
+    /* Простая эстетика */
+    :root{--bg:#0f1724; --card:#0b1220; --muted:#9aa4b2; --accent:#3b82f6}
+    *{box-sizing:border-box}
+    body{font-family:Inter,Roboto,Arial; margin:0; min-height:100vh; background:linear-gradient(180deg,#071024 0%, #071b2d 100%); color:#e6eef8}
+    header{display:flex;align-items:center;gap:1rem;padding:1rem;border-bottom:1px solid rgba(255,255,255,0.03)}
+    header h1{margin:0;font-size:1.1rem}
+    .app{display:grid;grid-template-columns:260px 1fr 320px;gap:1rem;padding:1rem}
+    .card{background:var(--card);border-radius:12px;padding:1rem;box-shadow:0 4px 18px rgba(2,6,23,0.6)}
+    .sidebar .profile{display:flex;align-items:center;gap:.75rem}
+    .avatar{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,#1f2937,#111827);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--muted)}
+    .accounts{margin-top:1rem}
+    .account{display:flex;align-items:center;justify-content:space-between;padding:.45rem;border-radius:8px}
+    .account .meta{display:flex;gap:.5rem;align-items:center}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:.4rem .6rem;border-radius:8px;color:var(--muted);cursor:pointer}
+    .btn.primary{background:var(--accent);border-color:transparent;color:white}
+    .composer{display:flex;flex-direction:column;gap:.6rem}
+    textarea{width:100%;min-height:80px;padding:.6rem;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);color:inherit}
+    .row{display:flex;gap:.6rem;align-items:center}
+    .feed{display:flex;flex-direction:column;gap:.8rem}
+    .post{border-radius:12px;padding:.8rem;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent)}
+    .post .meta{display:flex;gap:.6rem;align-items:center}
+    .post img, .post video{max-width:100%;border-radius:8px;margin-top:.6rem}
+    .small{font-size:.85rem;color:var(--muted)}
+    .messages{display:flex;flex-direction:column;height:60vh}
+    .conversations{display:flex;flex-direction:column;gap:.4rem;overflow:auto;max-height:26vh}
+    .conv{padding:.45rem;border-radius:8px;cursor:pointer}
+    .dm{flex:1;display:flex;flex-direction:column;gap:.5rem}
+    .messages-list{flex:1;overflow:auto;padding:.5rem;border-radius:8px;background:rgba(255,255,255,0.01)}
+    .message{padding:.45rem;border-radius:8px;max-width:75%}
+    .from-me{align-self:flex-end;background:linear-gradient(90deg,#153d7a,#2b6cb0)}
+    .from-them{background:rgba(255,255,255,0.03)}
+    input[type=file]{display:none}
+    .controls{display:flex;gap:.5rem;align-items:center}
+    .muted{color:var(--muted)}
+    footer{padding:1rem;border-top:1px solid rgba(255,255,255,0.03);text-align:center;color:var(--muted);font-size:.9rem}
+    @media(max-width:1000px){.app{grid-template-columns:1fr;padding:0.6rem}.sidebar{display:none}.rightcol{display:none}}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Мини‑соцсеть — расширённая (локально)</h1>
+    <div class="muted">(Все данные хранятся в localStorage — не отправляются на сервер)</div>
+  </header>
+  <div class="app">
+    <aside class="card sidebar">
+      <div class="profile">
+        <div class="avatar" id="meAvatar">U</div>
+        <div>
+          <div id="meName">UserA</div>
+          <div class="small muted">@usera</div>
+        </div>
+      </div>
+
+      <div class="accounts">
+        <h3 class="small muted">Аккаунты</h3>
+        <div id="accountsList"></div>
+        <div style="margin-top:.6rem">
+          <button class="btn" id="addAccountBtn">Создать аккаунт</button>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem">
+        <h3 class="small muted">Действия аккаунта</h3>
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <select id="activeAccountSelect"></select>
+          <button class="btn" id="switchBtn">Переключить</button>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <section class="card composer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Новый пост</strong>
+          <div class="small muted">Выбран аккаунт: <span id="activeLabel">—</span></div>
+        </div>
+        <textarea id="postText" placeholder="О чём думаете?"></textarea>
+        <input type="file" id="mediaInput" accept="image/*,video/*">
+        <div class="row">
+          <label class="btn" for="mediaInput">Добавить фото/видео</label>
+          <input id="mediaDesc" placeholder="Описание для медиа (опционально)" style="flex:1;padding:.4rem;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03);color:inherit" />
+          <button class="btn primary" id="postBtn">Опубликовать</button>
+        </div>
+        <div id="mediaPreview" class="small muted"></div>
+      </section>
+
+      <section style="margin-top:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+          <strong>Лента</strong>
+          <div class="small muted"><button class="btn" id="refreshFeed">Обновить</button></div>
+        </div>
+        <div id="feed" class="feed"></div>
+      </section>
+    </main>
+
+    <aside class="card rightcol">
+      <div>
+        <strong>Сообщения</strong>
+        <div class="conversations" id="conversations"></div>
+      </div>
+
+      <div class="messages" style="margin-top:.6rem">
+        <div class="dm card" style="padding:.6rem">
+          <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem">
+            <select id="dmRecipient" style="flex:1;padding:.4rem;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03)"></select>
+            <button class="btn" id="startConv">Начать</button>
+          </div>
+          <div class="messages-list" id="messagesList"></div>
+          <div style="display:flex;gap:.5rem;margin-top:.5rem">
+            <input id="dmInput" placeholder="Написать сообщение" style="flex:1;padding:.5rem;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)" />
+            <button class="btn primary" id="sendDm">Отправить</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:.8rem" class="card small muted">
+        <strong>Советы</strong>
+        <ul>
+          <li>Загружайте фото/видео — они сохраняются как dataURL в localStorage.</li>
+          <li>Сообщения — тоже локально. Очистите localStorage если нужно сбросить данные.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+  <footer class="card">Локальная демо‑соцсеть — функции: посты (текст+медиа), описания, лента, аккаунты, DM.</footer>
+
+  <script>
+    // Простая модель данных в localStorage
+    const STORE_KEY = 'mini_social_v1';
+    const defaultState = {
+      accounts: [
+        {id:'usera', name:'User A', handle:'usera'},
+        {id:'userb', name:'User B', handle:'userb'},
+        {id:'userc', name:'User C', handle:'userc'}
+      ],
+      activeAccount: 'usera',
+      posts: [], // {id, author, text, media:{type,data,desc},ts}
+      follows: { /* followerId: Set of followed ids */ },
+      messages: {} // convoKey => [{from,to,text,ts}]
+    };
+
+    function load(){
+      const raw = localStorage.getItem(STORE_KEY);
+      if(!raw) { localStorage.setItem(STORE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); }
+      try{ return JSON.parse(raw);}catch(e){ console.error('parse error',e); localStorage.setItem(STORE_KEY, JSON.stringify(defaultState)); return JSON.parse(JSON.stringify(defaultState)); }
+    }
+    function save(state){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+    let state = load();
+
+    // UI refs
+    const accountsList = document.getElementById('accountsList');
+    const activeSelect = document.getElementById('activeAccountSelect');
+    const activeLabel = document.getElementById('activeLabel');
+    const meAvatar = document.getElementById('meAvatar');
+
+    const postText = document.getElementById('postText');
+    const mediaInput = document.getElementById('mediaInput');
+    const mediaDesc = document.getElementById('mediaDesc');
+    const postBtn = document.getElementById('postBtn');
+    const mediaPreview = document.getElementById('mediaPreview');
+
+    const feed = document.getElementById('feed');
+    const refreshFeed = document.getElementById('refreshFeed');
+
+    const dmRecipient = document.getElementById('dmRecipient');
+    const sendDm = document.getElementById('sendDm');
+    const dmInput = document.getElementById('dmInput');
+    const messagesList = document.getElementById('messagesList');
+    const conversations = document.getElementById('conversations');
+    const startConv = document.getElementById('startConv');
+
+    const addAccountBtn = document.getElementById('addAccountBtn');
+    const switchBtn = document.getElementById('switchBtn');
+
+    // Utils
+    function uid(prefix='id'){return prefix+Math.random().toString(36).slice(2,9)}
+    function ts(){return new Date().toISOString();}
+    function shorten(s, n=140){ return s.length>n ? s.slice(0,n-1)+'…' : s }
+
+    // Rendering
+    function renderAccounts(){
+      accountsList.innerHTML=''; activeSelect.innerHTML=''; dmRecipient.innerHTML='';
+      state.accounts.forEach(a=>{
+        const el = document.createElement('div'); el.className='account';
+        el.innerHTML = `<div class="meta"><div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#111827,#0b1320);display:flex;align-items:center;justify-content:center">${a.name[0]||'U'}</div><div><div style="font-weight:600">${a.name}</div><div class="small muted">@${a.handle}</div></div></div><div><button class="btn" data-id="${a.id}">Удалить</button></div>`;
+        accountsList.appendChild(el);
+
+        const opt = document.createElement('option'); opt.value=a.id; opt.textContent=a.name+' (@'+a.handle+')'; activeSelect.appendChild(opt);
+        const opt2 = opt.cloneNode(true); dmRecipient.appendChild(opt2);
+      });
+      document.querySelectorAll('#accountsList .btn').forEach(b=>b.addEventListener('click',(e)=>{
+        const id = e.target.dataset.id; if(!confirm('Удалить аккаунт '+id+'?')) return;
+        state.accounts = state.accounts.filter(x=>x.id!==id);
+        if(state.activeAccount===id) state.activeAccount = state.accounts[0]?.id || null;
+        save(state); renderAll();
+      }))
+    }
+
+    function renderHeader(){
+      const me = state.accounts.find(a=>a.id===state.activeAccount) || {name:'—',handle:'—'};
+      document.getElementById('meName').textContent = me.name;
+      document.querySelector('#meName')
+      activeLabel.textContent = me.name ? me.name+' (@'+me.handle+')' : '—';
+      meAvatar.textContent = (me.name && me.name[0]) || 'U';
+      activeSelect.value = state.activeAccount;
+    }
+
+    function renderFeed(){
+      feed.innerHTML='';
+      const posts = [...state.posts].sort((a,b)=> b.ts.localeCompare(a.ts));
+      if(posts.length===0) feed.innerHTML='<div class="small muted">Пока нет постов — опубликуйте что-нибудь.</div>';
+      posts.forEach(p=>{
+        const card = document.createElement('div'); card.className='post';
+        const author = state.accounts.find(a=>a.id===p.author) || {name:p.author,handle:p.author};
+        card.innerHTML = `<div class="meta"><div style="width:40px;height:40px;border-radius:8px;background:linear-gradient(135deg,#0b1220,#061026);display:flex;align-items:center;justify-content:center">${author.name[0]||'U'}</div><div style="margin-left:.6rem"><div style="font-weight:600">${author.name}</div><div class="small muted">@${author.handle} • <span>${new Date(p.ts).toLocaleString()}</span></div></div></div>
+          <div style="margin-top:.6rem">${escapeHtml(p.text || '')}</div>`;
+
+        if(p.media){
+          if(p.media.type.startsWith('image')){
+            const img = document.createElement('img'); img.src = p.media.data; img.alt = p.media.desc || '';
+            card.appendChild(img);
+          } else if(p.media.type.startsWith('video')){
+            const vid = document.createElement('video'); vid.src = p.media.data; vid.controls = true; card.appendChild(vid);
+          }
+          if(p.media.desc) { const d = document.createElement('div'); d.className='small muted'; d.textContent = p.media.desc; card.appendChild(d); }
+        }
+
+        // actions
+        const actions = document.createElement('div'); actions.style.marginTop='.6rem';
+        const likeBtn = document.createElement('button'); likeBtn.className='btn'; likeBtn.textContent = '♥ '+(p.likes||0);
+        likeBtn.addEventListener('click',()=>{ p.likes = (p.likes||0)+1; save(state); renderFeed(); });
+        const replyBtn = document.createElement('button'); replyBtn.className='btn'; replyBtn.textContent='Ответить';
+        replyBtn.addEventListener('click',()=>{ postText.value = '@'+author.handle+' '; postText.focus(); });
+        actions.appendChild(likeBtn); actions.appendChild(replyBtn);
+        card.appendChild(actions);
+
+        feed.appendChild(card);
+      })
+    }
+
+    function renderConversations(){
+      conversations.innerHTML='';
+      const keys = Object.keys(state.messages || {});
+      if(keys.length===0) { conversations.innerHTML='<div class="small muted">Нет диалогов</div>'; return; }
+      keys.forEach(key=>{
+        const msgs = state.messages[key];
+        const last = msgs[msgs.length-1];
+        const other = getOtherFromConvKey(key, state.activeAccount);
+        const name = state.accounts.find(a=>a.id===other)?.name || other;
+        const el = document.createElement('div'); el.className='conv'; el.innerHTML = `<div style="display:flex;justify-content:space-between"><div><strong>${name}</strong><div class="small muted">${shorten(last.text,50)}</div></div><div class="small muted">${new Date(last.ts).toLocaleTimeString()}</div></div>`;
+        el.addEventListener('click',()=>{ openConversation(other); });
+        conversations.appendChild(el);
+      })
+    }
+
+    function renderMessagesList(otherId){
+      messagesList.innerHTML='';
+      const key = convoKey(state.activeAccount, otherId);
+      const msgs = state.messages[key] || [];
+      msgs.forEach(m=>{
+        const div = document.createElement('div'); div.className='message '+(m.from===state.activeAccount? 'from-me':'from-them'); div.textContent = m.text;
+        messagesList.appendChild(div);
+      })
+      messagesList.scrollTop = messagesList.scrollHeight;
+    }
+
+    function renderAll(){ renderAccounts(); renderHeader(); renderFeed(); renderConversations(); }
+
+    // Helpers
+    function escapeHtml(s){ return s.replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function convoKey(a,b){ return [a,b].sort().join('::'); }
+    function getOtherFromConvKey(key, me){ return key.split('::').find(x=>x!==me) }
+
+    // Actions
+    mediaInput.addEventListener('change', (e)=>{
+      const f = e.target.files[0]; if(!f) { mediaPreview.textContent=''; return; }
+      if(f.size>5*1024*1024){ alert('Файл слишком большой (макс 5MB)'); mediaInput.value=''; return; }
+      const reader = new FileReader(); reader.onload = ()=>{
+        mediaPreview.innerHTML = `<div class="small muted">Выбран: ${f.name} (${Math.round(f.size/1024)}KB)</div>`;
+        mediaPreview.dataset.type = f.type; mediaPreview.dataset.data = reader.result;
+      }
+      reader.readAsDataURL(f);
+    })
+
+    postBtn.addEventListener('click', ()=>{
+      const text = postText.value.trim();
+      const me = state.activeAccount; if(!me) { alert('Выберите аккаунт'); return; }
+      const media = mediaPreview.dataset.data ? {type: mediaPreview.dataset.type, data: mediaPreview.dataset.data, desc: mediaDesc.value.trim()} : null;
+      const post = {id:uid('p'), author:me, text:text, media:media, ts:ts(), likes:0};
+      state.posts.push(post); save(state);
+      postText.value=''; mediaInput.value=''; mediaPreview.innerHTML=''; mediaPreview.dataset.data=''; mediaDesc.value=''; renderAll();
+    })
+
+    refreshFeed.addEventListener('click', ()=> renderFeed());
+
+    sendDm.addEventListener('click', ()=>{
+      const to = dmRecipient.value; const from = state.activeAccount; const text = dmInput.value.trim(); if(!to || !text) return; const key = convoKey(from,to);
+      if(!state.messages[key]) state.messages[key]=[];
+      const msg = {from,to,text,ts:ts()}; state.messages[key].push(msg); save(state); dmInput.value=''; renderConversations(); renderMessagesList(getOtherFromConvKey(key, from));
+    })
+
+    startConv.addEventListener('click', ()=>{
+      const other = dmRecipient.value; if(!other) return; openConversation(other);
+    })
+
+    function openConversation(other){ renderMessagesList(other); }
+
+    addAccountBtn.addEventListener('click', ()=>{
+      const name = prompt('Имя аккаунта (например: Ivan)'); if(!name) return; const handle = prompt('Уникальный @handle (без @, например ivan123)'); if(!handle) return;
+      const id = handle.replace(/[^a-z0-9]/gi,'').toLowerCase() || uid('acc');
+      state.accounts.push({id,name,handle}); save(state); renderAll();
+    })
+
+    switchBtn.addEventListener('click', ()=>{
+      const val = activeSelect.value; if(!val) return; state.activeAccount = val; save(state); renderAll();
+    })
+
+    // Initial demo content when empty
+    if(state.posts.length===0){
+      state.posts.push({id:uid('p'),author:'userb',text:'Привет! Это демонстрационный пост с изображением.',media:null,ts:ts(),likes:2}); save(state);
+    }
+
+    renderAll();
+
+    // expose for quick debugging
+    window._miniSocial = {state,save,load};
+  </script>
+</body>
+</html>
